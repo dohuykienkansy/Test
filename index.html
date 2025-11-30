@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="theme-color" content="#0ea5a4" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="stylesheet" href="/styles.css" />
+<title>Test Offline PWA</title>
+</head>
+<body>
+<header class="site-header">
+<h1>Website Test (PWA Offline Ready)</h1>
+<p class="subtitle">Trang này có offline fallback và cache để truy cập khi không có Wi‑Fi.</p>
+</header>
+
+
+<main class="container">
+<article>
+<h2>Đoạn Lorem</h2>
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam.</p>
+<p>Suspendisse potenti. Curabitur sodales ligula in libero. Sed dignissim lacinia nunc.</p>
+</article>
+
+
+<section class="offline-status">
+<strong>Trạng thái mạng:</strong> <span id="network">--</span>
+</section>
+
+
+<button id="reload-cache" class="btn">Cập nhật cache thủ công</button>
+</main>
+
+
+<footer class="site-footer">
+<small>© Test PWA — Offline ready</small>
+</footer>
+
+
+<script>
+// Đăng ký service worker
+if ('serviceWorker' in navigator) {
+window.addEventListener('load', () => {
+navigator.serviceWorker.register('/sw.js')
+.then(reg => console.log('SW registered:', reg.scope))
+.catch(err => console.warn('SW register failed:', err));
+});
+}
+
+
+// Hiển thị trạng thái mạng
+const statusEl = document.getElementById('network');
+function updateNetwork() {
+statusEl.textContent = navigator.onLine ? 'Online' : 'Offline';
+}
+window.addEventListener('online', updateNetwork);
+window.addEventListener('offline', updateNetwork);
+updateNetwork();
+
+
+// Gọi service worker để cập nhật cache khi bấm nút
+document.getElementById('reload-cache').addEventListener('click', async () => {
+if (navigator.serviceWorker.controller) {
+navigator.serviceWorker.controller.postMessage({ action: 'skipWaitingAndRefresh' });
+alert('Đang yêu cầu cập nhật cache...');
+} else alert('Service worker chưa active. Vui lòng load lại trang.');
+});
+</script>
+</body>
+</html>
