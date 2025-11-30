@@ -1,67 +1,41 @@
-// sw.js - sửa để đảm bảo ASSETS tồn tại và log lỗi rõ ràng
-const CACHE_NAME = 'site-static-v1';
-const ASSETS = [
-  '/',
-  '/index.html',
-  '/style.css',     // theo repo bạn đang dùng
-  '/offline.html',
-  '/manifest.json',
-  // '/icons/icon-192.png', '/icons/icon-512.png' // nếu bạn thêm icon
+const CACHE_NAME = "offline-cache-v1";
+const FILES_TO_CACHE = [
+  "/",
+  "/index.html",
+  "/style.css",
+  "/script.js",
 ];
 
-self.addEventListener('install', event => {
-  console.log('[SW] install');
+// Cài đặt cache khi SW được kích hoạt
+self.addEventListener("install", event => {
+  console.log("[ServiceWorker] Install");
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      console.log("[ServiceWorker] Caching files");
+      return cache.addAll(FILES_TO_CACHE);
+    })
+  );
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS))
-      .then(() => console.log('[SW] Assets cached'))
-      .catch(err => {
-        console.error('[SW] Cache install failed:', err);
-      })
-  );
 });
 
-self.addEventListener('activate', event => {
-  console.log('[SW] activate');
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(
-      keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-    )).then(() => console.log('[SW] Old caches cleared'))
-  );
-});
-
-self.addEventListener('fetch', event => {
-  const req = event.request;
-  if (req.method !== 'GET') return;
-
-  if (req.mode === 'navigate') {
-    event.respondWith(
-      fetch(req).then(res => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-        return res;
-      }).catch(() => caches.match('/index.html').then(r => r || caches.match('/offline.html')))
-    );
-    return;
-  }
-
+// Serve file từ cache khi offline
+self.addEventListener("fetch", event => {
   event.respondWith(
-    caches.match(req).then(cacheRes => cacheRes || fetch(req).then(networkRes => {
-      return caches.open(CACHE_NAME).then(cache => {
-        try { cache.put(req, networkRes.clone()); } catch(e) {}
-        return networkRes;
-      });
-    }).catch(() => {
-      if (req.destination === 'image') return new Response('', { status: 404 });
-      return caches.match('/offline.html');
-    }))
+    caches.match(event.request)
+      .then(response => response || fetch(event.request))
   );
 });
 
-self.addEventListener('message', event => {
-  const data = event.data || {};
-  if (data.action === 'skipWaitingAndRefresh') {
-    self.skipWaiting();
-  }
+// Xoá cache cũ nếu có
+self.addEventListener("activate", event => {
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys.map(key => {
+          if (key !== CACHE_NAME) return caches.delete(key);
+        })
+      )
+    )
+  );
+  self.clients.claim();
 });
